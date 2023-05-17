@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="ko">
+
+<head>
+    <meta charset="utf-8">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+
+	<script src="components/datatable.js"></script>
+
+    <title>Base</title>
+    <style>
+    </style>
+</head>
+
+<body>
+    <header>Base</header>
+
+	<main>
+
+        <div>
+			<div>
+				<input type="radio" name="x-encoding" value="Months" checked>
+				<label>Months</label>
+			</div>
+			<div>
+				<input type="radio" name="x-encoding" value="Days">
+				<label>Days</label>
+			</div>
+			<div>
+				<input type="radio" name="x-encoding" value="Hours">
+				<label>Hours</label>
+			</div>
+        </div>
+
+        <div>
+            <svg id="filter2">
+            </svg>
+        </div>
+
+        <div>
+            <svg id="svg1">
+            </svg>
+        </div>
+
+        <div>
+            <svg id="svg2">
+            </svg>
+        </div>
+		
+		<table>
+			<thead>
+			</thead>
+			<tbody id="data-table">
+			</tbody>
+		</table>
+
+    </main>
+
+    <script>
+        let svg; // the main container, <svg>
+        let container; // <g> for circles
+        let xAxis; // <g> for the x axis
+        let yAxis; // <g> for the y axis
+        let legend; // <g> for the legend
+
+        let width = 400, height = 400;
+        let margin = { top: 10, right: 10, bottom: 40, left: 40 };
+        let data; // loaded data
+        let xScale, yScale, zScale,useColor;
+		
+		let dataTable;
+		let dataSales;
+		
+		
+		
+		
+        function initialize() {
+            svg = d3.select("#svg1");
+            container = svg.append("g");
+            xAxis = svg.append("g");
+            yAxis = svg.append("g");
+            legend = svg.append("g");
+			
+			xVar = "Months";
+			yVar = "UnitPrice";
+			useColor = false;
+
+			xScale = d3.scaleBand();			
+            yScale = d3.scaleLinear();			
+//            zScale = d3.scaleOrdinal().domain(["Setosa", "Versicolor", "Virginica"]).range(d3.schemeCategory10)
+
+            svg
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom);
+
+            container.attr("transform", `translate(${margin.left}, ${margin.top})`);
+   
+        }
+
+        function update() {
+		
+			xVar = d3.select("input[type=radio][name=x-encoding]:checked").property("value");
+			dataSales = d3.flatRollup(data, v => d3.sum(v, d => d[yVar]), d => d[xVar])
+			const categories = [...new Set(dataSales.map(d => d[0]))]
+
+			console.log(dataSales);
+			console.log(categories);
+			
+			xScale = xScale.domain(categories).range([ 0, width ]);			
+            yScale = yScale.domain(d3.extent(dataSales, d => d[1])).range([height, 0]);
+
+            container.selectAll("circle")
+                .data(dataSales)
+                .join("circle")
+                .transition()
+                .attr("cx", d => xScale(d[0]))
+				.attr("cy", d => yScale(d[1]))
+                .attr("fill", "black")
+                .attr("r", 3)
+
+            xAxis
+                .attr("transform", `translate(${margin.left}, ${margin.top + height})`)
+                .transition()
+                .call(d3.axisBottom(xScale));
+
+
+            yAxis
+                .attr("transform", `translate(${margin.left}, ${margin.top})`)
+                .transition()
+                .call(d3.axisLeft(yScale));
+
+        }
+
+
+        function updateTable() {     
+			 dataTable.update(data, data.columns)
+        }
+		
+		const formatMonth = d3.timeFormat('%Y-%m');
+		const formatDays = d3.timeFormat('%a');
+		const formatHours = d3.timeFormat('%H');
+
+        d3.csv("https://kangminpyo.github.io/InfoVis/dataf.csv")
+            .then(csvData => {
+                csvData.forEach(d => {
+                    d["SalesID"] = d["SalesID"];
+					d["Category"] = d["Category"];
+					d["ProductID"] = d["ProductID"];
+                    d["Product"] = d["Product"];
+                    d["Qty"] = +d["Qty"];
+					d["UnitPrice"] = +d["UnitPrice"];
+					d["Store"] = d["Store"];
+					d["Location"] = d["Location"];
+					d["Time"] = d["Time"];					
+					d["FullTime"] = d3.timeParse("%Y-%m-%d %H:%M:%S %p")(d["Time"]);
+					d["Months"] = formatMonth(d["FullTime"]);
+					d["Days"] = formatDays(d["FullTime"]);
+					d["Hours"] = formatHours(d["FullTime"]);
+					d["Price"] = +d["Qty"]*d["UnitPrice"];
+                });
+
+				
+
+				data = csvData;
+				console.log(data);				
+								
+				initialize();
+				update();
+				
+				d3.selectAll("input[type=radio][name=x-encoding]").on("change", update);
+/*				
+				dataTable = new DataTable("#data-table");
+				updateTable();
+
+				console.log(data.columns);
+				console.log(data);
+*/
+            })
+    </script>
+
+</body>
+
+</html>
