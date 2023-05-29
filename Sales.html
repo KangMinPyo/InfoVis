@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="ko">
+
+<head>
+    <meta charset="utf-8">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+	<script src ="https://cdnjs.cloudflare.com/ajax/libs/d3-legend/2.25.6/d3-legend.min.js"></script>
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+    <title>판매분석</title>
+</head>
+
+<body>
+
+	<header>
+        <nav class="container navbar navbar-light bg-light">
+            <div class="container-fluid">
+                <span class="navbar-brand mb-0 h1">판매분석 (시간별)</span>
+            </div>
+        </nav>
+    </header>
+	<main>
+		<div class="row pt-2">
+            <div class="col-1 text-end pe-2"><strong>X축:</strong></div>
+            <div class="col-11">
+                <div class="form-check form-check-inline">
+                    <input type="radio" name="x-encoding" value="Months" checked><label>월별</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input type="radio" name="x-encoding" value="Days"><label>요일별</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input type="radio" name="x-encoding" value="Hours"><label>시간별</label>
+                </div>
+            </div>
+        </div>
+
+		<div class="row" width="1000">
+            <div class="col-1 text-end pe-2"><strong>Store:</strong></div>
+            <div class="col-11">
+                <div class="form-check form-check-inline">
+                    <input type="radio" name="y-encoding" value="All" checked><label>전체</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input type="radio" name="y-encoding" value="판교점"><label>판교점</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input type="radio" name="y-encoding" value="역삼점"><label>역삼점</label>
+                </div>
+				<div class="form-check form-check-inline">
+                    <input type="radio" name="y-encoding" value="수원점"><label>수원점</label>
+                </div>
+				<div class="form-check form-check-inline">
+                    <input type="radio" name="y-encoding" value="신림점"><label>신림점</label>
+                </div>
+				<div class="form-check form-check-inline">
+                    <input type="radio" name="y-encoding" value="미아점"><label>미아점</label>
+                </div>
+				<div class="form-check form-check-inline">
+                    <input type="radio" name="y-encoding" value="홍대점"><label>홍대점</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-left">
+            <svg width="1000" height="600" id="svg1">
+            </svg>
+        </div>
+
+    </main>
+
+    <script>
+        let svg; // the main container, <svg>
+        let container; // <g> for circles
+        let xAxis; // <g> for the x axis
+        let yAxis; // <g> for the y axis
+        let legend; // <g> for the legend
+
+        let width = 1000, height = 600;
+        let margin = { top: 60, right: 10, bottom: 60, left: 100 };
+        let data, data1, data2, csvData, dataSales; // loaded data
+        let xScale, yScale, zScale;
+		let xVar, yVar, zVar, sVar;
+		let categories;
+		let stackedSeries, stackGen;
+		let maxY;	
+		
+
+        function initialize() {
+		
+            svg = d3.select("#svg1");
+            container = svg.append("g")
+            xAxis = svg.append("g");
+            yAxis = svg.append("g");
+            legend = svg.append("g");
+
+			xScale = d3.scalePoint();			
+            yScale = d3.scaleLinear();			
+            zScale = d3.scaleOrdinal();
+
+            svg
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom);
+
+            container.attr("transform", `translate(${margin.left}, ${margin.top})`);
+			
+			d3.selectAll("input[type=radio][name=x-encoding]").on("change", dataUpdate);
+			d3.selectAll("input[type=radio][name=y-encoding]").on("change", dataUpdate);
+   
+        }
+
+
+        function update() {
+
+/*
+Stacked Layer 그리기
+*/
+
+			stackGen = d3.stack().keys(storeList);
+			stackedSeries = stackGen(dataSales);		
+	
+				
+			xScale
+			  .domain(categories)
+			  .range([0, width]);
+			  
+			yScale
+			  .domain([0, maxY])
+			  .range([height, 0]);
+
+			zScale
+			  .domain(storeList)
+			  .range(d3.schemeCategory10);		
+			
+			var areaGen = d3.area()
+				.x((d) => xScale(d.data.X))
+				.y0((d) => yScale(d[0]))
+				.y1((d) => yScale(d[1]));
+			
+			container.selectAll(".areas")
+				.data(stackedSeries)
+				.join("path")
+				.transition()
+				.attr("d", areaGen)
+				.attr("fill", (d) => zScale(d.key))
+				.attr("class","stacked");
+			
+            xAxis
+                .attr("transform", `translate(${margin.left}, ${margin.top + height})`)
+                .transition()
+                .call(d3.axisBottom(xScale));
+				
+			xAxis.selectAll(".tick text")
+				.attr("font-size","13")
+
+            yAxis
+                .attr("transform", `translate(${margin.left}, ${margin.top})`)
+                .transition()
+                .call(d3.axisLeft(yScale));
+
+			yAxis.selectAll(".tick text")
+				.attr("font-size","13")
+
+			legend
+				.attr("transform", `translate(${margin.left + 100}, ${margin.top + 50})`)
+				.call(d3.legendColor().scale(zScale));
+
+//			var nodesRemove = testArea.exit().remove();			
+
+        }
+
+
+		function dataUpdate() {
+
+			svg.selectAll('.stacked').remove();	
+			
+			xVar = d3.select("input[type=radio][name=x-encoding]:checked").property("value");
+			sVar = d3.select("input[type=radio][name=y-encoding]:checked").property("value");
+			
+			yVar = "Price";
+			zVar = "Store";
+
+			if (sVar == "All") {
+				storeList = [...new Set(data2.map(d => d[zVar]))];
+				data1 = data2;
+			} else {
+				storeList = [sVar];
+				data1 = data2.filter(function(d) { if( d["Store"] == sVar ) { return d; } });
+			}
+/*
+다음 형태로 data1 --> data
+['01', '판교점', 246160]
+
+다음 형태로 maxY 값 구하기
+['01', 246160]
+*/			
+			data = d3.flatRollup(data1, v => d3.sum(v, d => d[yVar]), d => d[xVar], d => d[zVar])
+			maxY = d3.max(d3.merge(d3.flatRollup(data1, v => d3.sum(v, d => d[yVar]), d => d[xVar]) ), Number);
+					
+			if (xVar == "Days") {
+				categories = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+			} else if (xVar == "Hours") {
+				categories = ["01","02","03","04","05","06","07","08","09","10","11","12","13","14","15","16","17","18","19","20","21","22","23","00"];
+			} else {
+				categories = ["01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12"];
+			}
+/*
+data 다음 형태를
+['01', '판교점', 246160]
+['01', '역삼점', 12400]
+['01', '수원점', 30200]
+['01', '신림점', 2800]		
+
+--> dataSales 아래 형태로 변환
+['01', '판교점':246160, '역삼점':12400, '수원점':30200, '신림점':2800]
+
+참고사이트
+https://stackoverflow.com/questions/47956585/stacked-chart-with-keys-in-columns
+*/
+
+			dataSales = [...new Set(data.map(function(d) {
+				return d[0]
+			}))].map(function(d) {
+				var obj = {};
+				data.forEach(function(e) {
+					if (e[0] === d) {
+						obj[e[1]] = e[2];
+					}
+						obj["X"] = d;
+					})
+				return obj;
+			})
+
+			console.log(dataSales);
+			console.log(storeList);
+			
+			update();
+        }
+
+	
+		const formatMonth = d3.timeFormat('%m');
+		const formatDays = d3.timeFormat('%a');
+		const formatHours = d3.timeFormat('%H');
+
+        d3.csv("https://kangminpyo.github.io/InfoVis/data1f.csv")
+            .then(csvData => {
+                csvData.forEach(d => {
+                    d["SalesID"] = d["SalesID"];
+					d["Category"] = d["Category"];
+					d["ProductID"] = d["ProductID"];
+                    d["Product"] = d["Product"];
+                    d["Qty"] = +d["Qty"];
+					d["UnitPrice"] = +d["UnitPrice"];
+					d["Store"] = d["Store"];
+					d["Location"] = d["Location"];
+					d["Time"] = d["Time"];					
+					d["FullTime"] = d3.timeParse("%Y-%m-%d %H:%M:%S %p")(d["Time"]);
+					d["Months"] = formatMonth(d["FullTime"]);
+					d["Days"] = formatDays(d["FullTime"]);
+					d["Hours"] = formatHours(d["FullTime"]);
+					d["Price"] = +d["Qty"]*d["UnitPrice"];
+                });
+
+				data2 = csvData;
+								
+				initialize();
+				dataUpdate();			
+
+            })
+    </script>
+
+</body>
+
+</html>

@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="ko">
+
+<head>
+    <meta charset="utf-8">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-1BmE4kWBq78iYhFldvKuhfTAU6auU8tT94WrHftjDbrCEXSU1oBoqyl2QvZ6jIW3" crossorigin="anonymous">
+    <title>상품 분석 (Y -> X 함께 구매한 빈도)</title>
+    <style>
+    </style>
+</head>
+
+<body>
+	<header>
+        <nav class="container navbar navbar-light bg-light">
+            <div class="container-fluid">
+                <span class="navbar-brand mb-0 h1">상품 분석 (Y -> X 함께 구매한 빈도)</span>
+            </div>
+        </nav>
+
+    </header>
+	<main>
+		<div class="row pt-2">
+            <div class="col-1 text-end pe-2"><strong>분류:</strong></div>
+            <div class="col-11">
+                <div class="form-check form-check-inline">
+                    <input type="radio" name="y-encoding" value="all" checked><label>전체</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input type="radio" name="y-encoding" value="soju"><label>소주</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input type="radio" name="y-encoding" value="beer"><label>맥주</label>
+                </div>
+                <div class="form-check form-check-inline">
+                    <input type="radio" name="y-encoding" value="mak"><label>막걸리</label>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <svg width="1400" height="800" id="svg">
+            </svg>
+        </div>
+
+    </main>
+
+    <script>
+        let svg; // the main container, <svg>
+        let container; // <g> for circles
+        let xAxis; // <g> for the x axis
+        let yAxis; // <g> for the y axis
+
+        let width = 1400, height = 800;
+        let margin = { top: 40, right: 20, bottom: 60, left: 100 };
+		let margin1 = 50;
+        let data, data1, csvData; // loaded data
+        let xScale, yScale, zScale, cScale;
+		let xVar, yVar, zVar;
+
+		var d3_category20 = [
+			"#1f77b4", "#aec7e8", "#ff7f0e", "#ffbb78", "#2ca02c", "#98df8a", "#d62728", "#ff9896", "#9467bd", "#c5b0d5",
+			"#8c564b", "#c49c94", "#e377c2", "#f7b6d2", "#7f7f7f", "#c7c7c7", "#bcbd22", "#dbdb8d", "#17becf", "#9edae5"
+		];
+		
+		function initialize() {
+            xVar ="x";
+            yVar = "y";
+			zVar = "frequency";
+			
+			svg = d3.select("#svg");
+            container = svg.append("g");
+            xAxis = svg.append("g");
+            yAxis = svg.append("g");
+            legend = svg.append("g");
+
+            xScale = d3.scalePoint();
+            yScale = d3.scalePoint();
+			zScale = d3.scaleLinear();
+			cScale = d3.scaleOrdinal();
+
+            svg
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom);
+			
+			container.attr("transform", `translate(${margin.left}, ${margin.top})`);
+			
+			d3.selectAll("input[type=radio][name=y-encoding]").on("change", dataUpdate);
+			
+        }
+		
+		
+        function update() {
+
+            xScale = xScale.domain([...new Set(data.map(d => d[xVar]))]).range([50, width-50]);
+            yScale = yScale.domain([...new Set(data.map(d => d[yVar]))]).range([50, height-margin1]);
+			zScale = zScale.domain(d3.extent(data, d => d[zVar])).range([0, 20]);
+			cScale = cScale.domain([...new Set(data.map(d => d[yVar]))]).range(d3_category20);
+
+            container.selectAll("circle")
+                .data(data)
+                .join("circle")
+                .transition()
+                .attr("cx", d => xScale(d[xVar]))
+                .attr("cy", d => yScale(d[yVar]))                
+                .attr("fill", d => cScale(d[yVar]))
+                .attr("r", d => zScale(d[zVar]))
+
+            xAxis
+                .attr("transform", `translate(${margin.left}, ${margin.top})`)
+                .transition()
+                .call(d3.axisTop(xScale));
+			
+			xAxis.selectAll(".tick text")
+				.attr("font-size","13")
+
+            yAxis
+                .attr("transform", `translate(${margin.left}, ${margin.top})`)
+                .transition()
+                .call(d3.axisLeft(yScale));
+			
+			yAxis.selectAll(".tick text")
+				.attr("font-size","15")
+		
+        }
+		
+//	분류 선택에 맞게 Data Filter & 간격 조정
+
+		function dataUpdate() {
+		
+				let choice1 = d3.select("input[type=radio][name=y-encoding]:checked").property("value");
+				
+				if (choice1 == "soju") {
+					data = data1.filter(d => d["Category"] === "소주");
+					margin1 = 500;
+				} else if (choice1 == "beer") {
+					data = data1.filter(d => d["Category"] === "맥주");
+					margin1 = 50;
+				} else if (choice1 == "mak") {
+					data = data1.filter(d => d["Category"] === "막걸리");					
+					margin1 = 600;
+				} else {
+					data = data1;
+					margin1 = 50;
+				}
+				
+				update();
+        }
+
+
+        d3.csv("https://kangminpyo.github.io/InfoVis/Bubble2.csv")
+            .then(csvData => {
+                csvData.forEach(d => {
+                    d["Category"] = d["Category"];					
+                    d["y"] = d["y"];
+					d["x"] = d["x"];
+                    d["frequency"] = +d["frequency"];
+                });
+				
+				data1 = csvData;				
+				
+                initialize();
+                dataUpdate();
+
+            })
+    </script>
+
+</body>
+
+</html>
