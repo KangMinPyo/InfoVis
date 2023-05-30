@@ -114,6 +114,7 @@
 
 /*
 Stacked Layer 그리기
+http://using-d3js.com/05_06_stacks.html
 */
 
 			stackGen = d3.stack().keys(storeList);
@@ -164,8 +165,6 @@ Stacked Layer 그리기
 			legend
 				.attr("transform", `translate(${margin.left + 100}, ${margin.top + 50})`)
 				.call(d3.legendColor().scale(zScale));
-
-//			var nodesRemove = testArea.exit().remove();			
 
         }
 
