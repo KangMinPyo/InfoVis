@@ -242,7 +242,7 @@ https://stackoverflow.com/questions/47956585/stacked-chart-with-keys-in-columns
 		const formatDays = d3.timeFormat('%a');
 		const formatHours = d3.timeFormat('%H');
 
-        d3.csv("https://kangminpyo.github.io/InfoVis/data1f.csv")
+        d3.csv("https://kangminpyo.github.io/InfoVis/data/data1f.csv")
             .then(csvData => {
                 csvData.forEach(d => {
                     d["SalesID"] = d["SalesID"];
